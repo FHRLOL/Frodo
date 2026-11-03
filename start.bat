@@ -1,25 +1,24 @@
 @echo off
-chcp 65001 >nul
 setlocal
 cd /d "%~dp0"
 
 echo ======================================================================
-echo    🧙‍♂️ FRODO: Запуск ИИ-наставника (Gemma 4 + EmbeddingGemma 2)
-echo    Интерфейс: Holad Design System (LTI 1.1 + Moodle Integration)
+echo    FRODO AI MENTOR: Starting System (Gemma 4 + EmbeddingGemma 2)
+echo    UI: Holad Design System (LTI 1.1 + Moodle Integration)
 echo ======================================================================
 echo.
 
 python --version >nul 2>&1
-if %ERRORLEVEL% NEQ 0 (
-    echo [ОШИБКА] Python не обнаружен в переменной PATH.
-    echo Пожалуйста, установите Python 3.10+ и добавьте его в PATH.
+if errorlevel 1 (
+    echo [ERROR] Python not found in PATH.
+    echo Please install Python 3.10+ and add it to your PATH environment variable.
     pause
     exit /b 1
 )
 
 python run.py
-if %ERRORLEVEL% NEQ 0 (
+if errorlevel 1 (
     echo.
-    echo [ОШИБКА] Сбой при выполнении Frodo AI Mentor.
+    echo [ERROR] Frodo AI Mentor exited with an error.
     pause
 )
