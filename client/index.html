@@ -1,120 +1,445 @@
 <!DOCTYPE html>
-<html lang="ru">
+<html lang="ru" class="dark">
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Frodo — ИИ-наставник по курсу Python</title>
+  <title>Frodo AI Mentor — ИИ-наставник по курсу Python</title>
+  
+  <!-- Fonts: Inter & JetBrains Mono -->
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+  
+  <!-- Tailwind CSS CDN -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script>
+    tailwind.config = {
+      darkMode: 'class',
+      theme: {
+        extend: {
+          colors: {
+            background: '#0b0f19',
+            card: '#151b2b',
+            'card-hover': '#1c2438',
+            border: 'rgba(255, 255, 255, 0.08)',
+            foreground: '#f8fafc',
+            secondary: '#94a3b8',
+            primary: {
+              DEFAULT: '#10b981',
+              hover: '#059669',
+              light: 'rgba(16, 185, 129, 0.1)',
+            }
+          },
+          fontFamily: {
+            sans: ['Inter', 'sans-serif'],
+            mono: ['JetBrains Mono', 'monospace'],
+          }
+        }
+      }
+    }
+  </script>
+
+  <!-- Marked.js for Markdown Rendering -->
+  <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+
+  <!-- Custom Styles with Holad Design Tokens -->
   <link rel="stylesheet" href="style.css">
 </head>
-<body>
-  <div class="app-container">
-    <!-- Сайдбар: материалы курса и статус базы знаний -->
-    <aside class="sidebar">
-      <div class="sidebar-header">
-        <div class="logo">
-          <span class="logo-icon">🧙‍♂️</span>
+<body class="bg-[#0b0f19] text-[#f8fafc] font-sans min-h-screen flex flex-col antialiased selection:bg-[#10b981]/30 selection:text-[#f8fafc]">
+
+  <!-- ==================== ШАПКА (HEADER) ==================== -->
+  <header class="sticky top-0 z-40 w-full bg-[#151b2b]/95 backdrop-blur-md border-b border-[rgba(255,255,255,0.08)] px-4 sm:px-6 py-2.5 transition-all">
+    <div class="max-w-7xl mx-auto flex flex-col md:flex-row items-center justify-between gap-3">
+      
+      <!-- Логотип и статус системы -->
+      <div class="flex items-center gap-3 w-full md:w-auto justify-between md:justify-start">
+        <div class="flex items-center gap-2.5">
+          <div class="w-9 h-9 rounded-lg bg-[#10b981]/10 border border-[#10b981]/20 flex items-center justify-center text-xl shadow-[0_0_12px_rgba(16,185,129,0.2)]">
+            🧙‍♂️
+          </div>
           <div>
-            <h1>Frodo Mentor</h1>
-            <span class="badge">RAG + RLM</span>
-          </div>
-        </div>
-      </div>
-
-      <div class="sidebar-section">
-        <h3>База знаний курса</h3>
-        <div class="status-card">
-          <div class="status-indicator online"></div>
-          <div class="status-info">
-            <span class="status-title">EmbeddingGemma 2 (Q8_0)</span>
-            <span class="status-subtitle">Локальный llama-server :8085</span>
-          </div>
-        </div>
-        <div class="docs-list">
-          <div class="doc-item active">
-            <span class="doc-icon">📄</span>
-            <div class="doc-meta">
-              <span class="doc-title">data_structures.md</span>
-              <span class="doc-sub">Списки, кортежи, словари</span>
+            <div class="flex items-center gap-2">
+              <span class="font-bold text-base tracking-tight text-[#f8fafc]">Frodo AI Mentor</span>
+              <span class="holad-badge holad-badge-primary text-[10px] py-0 px-1.5 uppercase font-mono">LTI 1.1</span>
             </div>
-          </div>
-          <div class="doc-item">
-            <span class="doc-icon">📄</span>
-            <div class="doc-meta">
-              <span class="doc-title">exceptions.md</span>
-              <span class="doc-sub">try..except, else, finally, with</span>
-            </div>
-          </div>
-          <div class="doc-item">
-            <span class="doc-icon">📄</span>
-            <div class="doc-meta">
-              <span class="doc-title">op_exp.md</span>
-              <span class="doc-sub">Операторы //, %, сдвиги</span>
-            </div>
+            <p class="text-[11px] text-[#94a3b8]">Наставник по курсу Python • РТУ МИРЭА</p>
           </div>
         </div>
-      </div>
 
-      <div class="sidebar-section rules-section">
-        <h3>Правила наставника (RLM)</h3>
-        <ul class="rules-list">
-          <li><span class="rule-badge p95">P95</span> Строгое заземление на контент</li>
-          <li><span class="rule-badge p95">P95</span> Честный отказ при отсутствии данных</li>
-          <li><span class="rule-badge p90">P90</span> Точные сноски на строки</li>
-        </ul>
-      </div>
-
-      <div class="sidebar-footer">
-        <a href="/" class="btn-inspector-link">🔍 Открыть RAG-инспектор</a>
-        <span class="version-tag">Frodo v0.1.0 • Hybrid Store</span>
-      </div>
-    </aside>
-
-    <!-- Основное окно чата -->
-    <main class="chat-container">
-      <header class="chat-header">
-        <div class="chat-title">
-          <h2>Диалог со студентом</h2>
-          <p>Ответы формируются исключительно по материалам курса</p>
-        </div>
-        <div class="header-actions">
-          <button id="clearBtn" class="btn-secondary">Очистить чат</button>
-        </div>
-      </header>
-
-      <div id="messagesArea" class="messages-area">
-        <!-- Приветственное сообщение наставника -->
-        <div class="message mentor">
-          <div class="avatar">🧙‍♂️</div>
-          <div class="message-content">
-            <div class="sender-name">ИИ-наставник</div>
-            <p>Привет! Я твой наставник по курсу Python. Я отвечаю <strong>строго по загруженным методическим материалам</strong> и всегда даю точную ссылку на раздел и строки.</p>
-            <p>Если в материалах ответа нет — я прямо скажу об этом, не пытаясь придумывать или угадывать.</p>
-            <div class="chips-container">
-              <button class="chip" data-query="Почему списки в Python считаются изменяемым типом данных?">Списки и их изменяемость</button>
-              <button class="chip" data-query="Чем кортеж отличается от списка с точки зрения изменения данных? Как правильно создать кортеж, содержащий ровно один элемент со значением 2?">Кортеж из одного элемента</button>
-              <button class="chip" data-query="Что делает оператор // в Python и какой результат даст выражение -13 // 3 согласно материалам?">Оператор // и -13 // 3</button>
-              <button class="chip out-of-scope" data-query="Какова временная сложность проверки принадлежности элемента списку в нотации Big O?">Провокация: Big O (нет в доках)</button>
-            </div>
+        <!-- Индикаторы статуса моделей (8085 / 8086) -->
+        <div class="flex items-center gap-2 sm:gap-3 text-xs bg-[#0b0f19]/60 px-2.5 py-1 rounded-md border border-[rgba(255,255,255,0.06)]">
+          <div class="flex items-center gap-1.5" title="EmbeddingGemma 2 (8085): Эмбеддинги и семантический поиск">
+            <span id="embedderStatusDot" class="status-dot online"></span>
+            <span class="text-[11px] text-[#94a3b8] hidden sm:inline">Embedder:</span>
+            <span class="text-[11px] font-mono text-[#cbd5e1]">Gemma 2 (:8085)</span>
+          </div>
+          <span class="text-[rgba(255,255,255,0.15)]">•</span>
+          <div class="flex items-center gap-1.5" title="Gemma 4 E4B (8086): Генерация с Thinking Mode">
+            <span id="llmStatusDot" class="status-dot online"></span>
+            <span class="text-[11px] text-[#94a3b8] hidden sm:inline">LLM:</span>
+            <span class="text-[11px] font-mono text-[#cbd5e1]">Gemma 4 (:8086)</span>
           </div>
         </div>
       </div>
 
-      <!-- Поле ввода вопроса -->
-      <footer class="chat-input-area">
-        <form id="chatForm" class="chat-form">
-          <textarea id="questionInput" placeholder="Задайте вопрос по материалам курса (например: как работает блок else в try..except?)..." rows="1"></textarea>
-          <button type="submit" id="sendBtn" class="btn-primary">
-            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-              <path d="M22 2L11 13M22 2L15 22L11 13L2 9L22 2Z"></path>
-            </svg>
+      <!-- Центральная навигация по экранам (для Преподавателя) -->
+      <div id="viewSwitcherNav" class="hidden items-center bg-[#0b0f19] p-1 rounded-lg border border-[rgba(255,255,255,0.08)]">
+        <button id="btnSwitchToStudent" class="px-3 py-1.5 text-xs font-medium rounded-md transition-all text-[#f8fafc] bg-[#151b2b] shadow-sm flex items-center gap-1.5 min-h-[36px]" aria-label="Перейти к виду чата Студента">
+          <span>🎓</span> Чат Студента
+        </button>
+        <button id="btnSwitchToInstructor" class="px-3 py-1.5 text-xs font-medium rounded-md transition-all text-[#94a3b8] hover:text-[#f8fafc] flex items-center gap-1.5 min-h-[36px]" aria-label="Перейти к панели Преподавателя">
+          <span>👨‍🏫</span> Панель Преподавателя
+        </button>
+      </div>
+
+      <!-- Быстрый переключатель ролей LTI и текущий пользователь -->
+      <div class="flex items-center gap-2.5 w-full md:w-auto justify-end">
+        <!-- Кнопки быстрого переключения роли -->
+        <div class="flex items-center bg-[#0b0f19] p-0.5 rounded-lg border border-[rgba(255,255,255,0.08)]">
+          <button id="btnRoleStudent" class="px-2.5 py-1 text-xs rounded-md font-medium transition-all min-h-[36px] flex items-center gap-1.5 text-[#10b981] bg-[#10b981]/15 border border-[#10b981]/30 font-semibold" aria-label="Войти как Студент">
+            <span>🎓</span> Студент
           </button>
-        </form>
-      </footer>
-    </main>
-  </div>
+          <button id="btnRoleInstructor" class="px-2.5 py-1 text-xs rounded-md font-medium transition-all min-h-[36px] flex items-center gap-1.5 text-[#94a3b8] hover:text-[#f8fafc]" aria-label="Войти как Преподаватель">
+            <span>👨‍🏫</span> Преподаватель
+          </button>
+        </div>
+
+        <!-- Бейдж текущего профиля -->
+        <div id="userProfileBadge" class="flex items-center gap-2 pl-2 border-l border-[rgba(255,255,255,0.08)]">
+          <div id="userAvatar" class="w-8 h-8 rounded-full bg-[#10b981]/20 text-[#10b981] flex items-center justify-center font-bold text-xs border border-[#10b981]/30">
+            АИ
+          </div>
+          <div class="text-left leading-tight hidden lg:block">
+            <div id="userName" class="text-xs font-semibold text-[#f8fafc]">Алексей Иванов</div>
+            <div id="userRoleBadge" class="text-[10px] text-[#10b981] font-mono">Студент (student_42)</div>
+          </div>
+        </div>
+      </div>
+
+    </div>
+  </header>
+
+  <!-- ==================== ОСНОВНОЙ КОНТЕЙНЕР (MAIN) ==================== -->
+  <main class="flex-1 max-w-7xl w-full mx-auto p-3 sm:p-4 md:p-6 flex flex-col min-h-0 overflow-hidden">
+    
+    <!-- ==================== ЭКРАН СТУДЕНТА (STUDENT VIEW) ==================== -->
+    <div id="studentView" class="flex-1 flex flex-col gap-4 min-h-0">
+      
+      <!-- Верхний блок: Селектор Лабораторных работ и Динамический Баннер -->
+      <div class="flex flex-col gap-3">
+        
+        <!-- Селектор активной лабы -->
+        <div class="flex items-center justify-between flex-wrap gap-2">
+          <div class="flex items-center gap-2">
+            <span class="text-xs font-semibold uppercase tracking-wider text-[#94a3b8]">Активная работа:</span>
+            <div id="labsSelectorContainer" class="flex items-center gap-2 flex-wrap">
+              <!-- Карточки/кнопки лаб рендерятся через app.js -->
+              <div class="animate-pulse h-8 w-40 bg-[#151b2b] rounded-lg"></div>
+            </div>
+          </div>
+
+          <div class="flex items-center gap-2 text-xs text-[#94a3b8]">
+            <span id="activeLabGrade" class="hidden sm:inline-flex items-center gap-1 bg-[#151b2b] px-2.5 py-1 rounded border border-[rgba(255,255,255,0.08)] font-mono">
+              Балл: <strong class="text-[#10b981]" id="labGradeVal">100 / 100</strong>
+            </span>
+          </div>
+        </div>
+
+        <!-- ДИНАМИЧЕСКИЙ БАННЕР ТЕКУЩЕГО РЕЖИМА НАСТАВНИКА -->
+        <div id="mentorModeBanner" class="p-3.5 sm:p-4 rounded-xl border transition-all duration-300 flex items-start gap-3.5 bg-[#151b2b]">
+          <!-- Иконка режима -->
+          <div id="bannerIconWrapper" class="w-10 h-10 rounded-lg flex items-center justify-center text-xl shrink-0 bg-[#f59e0b]/10 text-[#f59e0b] border border-[#f59e0b]/30">
+            🛡️
+          </div>
+          <!-- Текст режима -->
+          <div class="flex-1 min-w-0">
+            <div class="flex items-center gap-2.5 flex-wrap">
+              <h2 id="bannerTitle" class="text-sm sm:text-base font-bold text-[#f8fafc]">
+                Режим наставника (Сократ)
+              </h2>
+              <span id="bannerBadge" class="holad-badge holad-badge-warning text-[11px]">
+                Лабораторная не зачтена
+              </span>
+            </div>
+            <p id="bannerDesc" class="text-xs sm:text-sm text-[#94a3b8] mt-1 leading-relaxed">
+              Наставник не пишет код за вас, а помогает наводящими вопросами и указывает на нестыковки в логике.
+            </p>
+          </div>
+        </div>
+
+      </div>
+
+      <!-- Область чата -->
+      <div class="flex-1 min-h-0 flex flex-col holad-card overflow-hidden">
+        
+        <!-- Заголовок чата с кнопкой очистки -->
+        <div class="px-4 py-2.5 border-b border-[rgba(255,255,255,0.08)] bg-[#151b2b]/60 flex items-center justify-between">
+          <div class="flex items-center gap-2">
+            <span class="w-2 h-2 rounded-full bg-[#10b981]"></span>
+            <span class="text-xs font-semibold text-[#f8fafc]">Диалог с наставником</span>
+            <span class="text-[11px] text-[#94a3b8] hidden sm:inline">• Строго по утвержденным методическим материалам</span>
+          </div>
+          <button id="clearChatBtn" class="holad-btn-secondary text-xs py-1 px-2.5 min-h-[30px]" aria-label="Очистить историю диалога">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 6h18M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path></svg>
+            Очистить
+          </button>
+        </div>
+
+        <!-- Лента сообщений -->
+        <div id="messagesArea" class="flex-1 min-h-0 overflow-y-auto p-4 sm:p-5 space-y-4 custom-scrollbar">
+          <!-- Приветственное сообщение наставника по умолчанию -->
+          <div class="flex items-start gap-3 max-w-3xl">
+            <div class="w-8 h-8 rounded-lg bg-[#10b981]/15 border border-[#10b981]/30 text-[#10b981] flex items-center justify-center text-sm shrink-0 shadow-sm">
+              🧙‍♂️
+            </div>
+            <div class="flex-1 bg-[#151b2b] border border-[rgba(255,255,255,0.08)] rounded-xl p-4 shadow-lg">
+              <div class="flex items-center justify-between mb-2 pb-1.5 border-b border-[rgba(255,255,255,0.05)]">
+                <span class="text-xs font-bold text-[#f8fafc]">Frodo AI Mentor</span>
+                <span class="holad-badge holad-badge-primary text-[10px]">Готов к работе</span>
+              </div>
+              <div class="prose-dark text-xs sm:text-sm text-[#cbd5e1] space-y-2">
+                <p>Здравствуйте! Я ваш интерактивный наставник по курсу Python. Все мои ответы строго заземлены на базу знаний курса.</p>
+                <p class="text-[#94a3b8]">Если у вас статус работы <strong>«В процессе»</strong> — я помогу наводящими вопросами. После сдачи работы преподавателю вам откроется <strong>«Режим Мастера»</strong> с полным синтаксисом и разбором кода.</p>
+              </div>
+
+              <!-- Пресеты быстрых вопросов -->
+              <div class="mt-3.5 pt-3 border-t border-[rgba(255,255,255,0.06)]">
+                <div class="text-[11px] font-semibold text-[#94a3b8] mb-2 uppercase tracking-wide">Рекомендуемые вопросы:</div>
+                <div class="flex flex-wrap gap-1.5">
+                  <button class="preset-chip holad-btn-secondary text-[11px] py-1 px-2.5 min-h-[28px] rounded-full" data-query="Где ошибка в синтаксисе при создании кортежа из одного элемента?" aria-label="Вопрос о синтаксисе кортежа">
+                    📌 Кортеж из одного элемента
+                  </button>
+                  <button class="preset-chip holad-btn-secondary text-[11px] py-1 px-2.5 min-h-[28px] rounded-full" data-query="В чем ключевое отличие кортежа от списка в Python с точки зрения изменяемости?" aria-label="Вопрос об отличии кортежа от списка">
+                    📌 Кортеж vs Список
+                  </button>
+                  <button class="preset-chip holad-btn-secondary text-[11px] py-1 px-2.5 min-h-[28px] rounded-full" data-query="Как работает блок else в конструкции try..except и когда он выполняется?" aria-label="Вопрос о блоке else в исключениях">
+                    📌 Блок else в try..except
+                  </button>
+                  <button class="preset-chip holad-btn-secondary text-[11px] py-1 px-2.5 min-h-[28px] rounded-full" data-query="Что делает оператор целочисленного деления // и какой результат вернет -13 // 3?" aria-label="Вопрос об операторе деления">
+                    📌 Оператор -13 // 3
+                  </button>
+                  <button class="preset-chip holad-btn-secondary text-[11px] py-1 px-2.5 min-h-[28px] rounded-full text-[#f59e0b] border-[#f59e0b]/30" data-query="Какова временная сложность поиска элемента в словаре в нотации Big O?" aria-label="Тест отсечения Guardrail">
+                    🛡️ Тест Guardrail (Big O)
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Подвал ввода сообщений -->
+        <div class="p-3 sm:p-4 bg-[#151b2b]/95 border-t border-[rgba(255,255,255,0.08)]">
+          <form id="chatForm" class="flex items-end gap-2 sm:gap-3">
+            <div class="flex-1 relative">
+              <textarea 
+                id="questionInput" 
+                rows="1" 
+                placeholder="Задайте вопрос по лабораторной работе (Enter — отправить, Shift+Enter — перенос строки)..." 
+                class="w-full bg-[#0b0f19] border border-[rgba(255,255,255,0.1)] rounded-xl py-2.5 pl-3.5 pr-10 text-sm text-[#f8fafc] placeholder-[#64748b] focus:outline-none focus:border-[#10b981] focus:ring-1 focus:ring-[#10b981] resize-none transition-all leading-relaxed"
+                aria-label="Поле ввода вопроса для наставника"
+              ></textarea>
+            </div>
+            
+            <button 
+              type="submit" 
+              id="sendBtn" 
+              class="holad-btn-primary min-h-[42px] min-w-[42px] px-3.5 rounded-xl shadow-[0_0_15px_rgba(16,185,129,0.25)]" 
+              aria-label="Отправить вопрос наставнику"
+            >
+              <svg id="sendIcon" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M22 2L11 13M22 2L15 22L11 13L2 9L22 2Z"></path></svg>
+              <span id="sendSpinner" class="hidden animate-spin w-4 h-4 border-2 border-black border-t-transparent rounded-full"></span>
+            </button>
+          </form>
+          <div class="flex items-center justify-between mt-2 px-1 text-[11px] text-[#64748b]">
+            <span>Потоковая генерация Server-Sent Events • Gemma 4 E4B</span>
+            <span class="font-mono">Режим RAG-заземления</span>
+          </div>
+        </div>
+
+      </div>
+
+    </div>
+
+    <!-- ==================== ПАНЕЛЬ ПРЕПОДАВАТЕЛЯ (INSTRUCTOR DASHBOARD) ==================== -->
+    <div id="instructorDashboard" class="hidden flex-1 flex flex-col gap-4 min-h-0">
+      
+      <!-- Верхний статус-бар преподавателя -->
+      <div class="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 holad-card p-4">
+        <div>
+          <div class="flex items-center gap-2">
+            <h1 class="text-base sm:text-lg font-bold text-[#f8fafc]">Панель управления курсом (Instructor Admin)</h1>
+            <span class="holad-badge holad-badge-primary text-xs">RBAC Instructor</span>
+          </div>
+          <p class="text-xs text-[#94a3b8] mt-0.5">Управление допуском студентов к Режиму Мастера, Gap Analysis и База знаний RAG</p>
+        </div>
+
+        <div class="flex items-center gap-3">
+          <div class="text-right">
+            <div class="text-xs text-[#94a3b8]">Всего студентов: <span id="statStudentsCount" class="font-bold text-[#f8fafc]">1</span></div>
+            <div class="text-xs text-[#94a3b8]">Запросов в Gap Analysis: <span id="statUnansweredCount" class="font-bold text-[#f59e0b]">8</span></div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Вкладки панели преподавателя -->
+      <div class="flex items-center gap-2 border-b border-[rgba(255,255,255,0.08)] pb-2 overflow-x-auto">
+        <button id="tabBtnMatrix" class="holad-btn-secondary text-xs py-2 px-4 font-semibold text-[#10b981] bg-[#10b981]/15 border-[#10b981]/40 flex items-center gap-2" aria-label="Вкладка Матрица сдачи лабораторных">
+          <span>📊</span> Матрица сдачи лабораторных
+        </button>
+        <button id="tabBtnGap" class="holad-btn-secondary text-xs py-2 px-4 font-semibold text-[#94a3b8] flex items-center gap-2" aria-label="Вкладка Анализ пробелов">
+          <span>🛡️</span> Анализ пробелов (Gap Analysis)
+        </button>
+        <button id="tabBtnRag" class="holad-btn-secondary text-xs py-2 px-4 font-semibold text-[#94a3b8] flex items-center gap-2" aria-label="Вкладка База знаний">
+          <span>📚</span> База знаний (RAG Manager)
+        </button>
+      </div>
+
+      <!-- Контейнер для содержимого вкладок -->
+      <div class="flex-1 min-h-0 holad-card overflow-hidden flex flex-col p-4 sm:p-5">
+        
+        <!-- ================= ВКЛАДКА 1: МАТРИЦА СТУДЕНТОВ ================= -->
+        <div id="paneMatrix" class="flex-1 flex flex-col min-h-0">
+          <div class="flex items-center justify-between mb-3 pb-2 border-b border-[rgba(255,255,255,0.06)]">
+            <div>
+              <h3 class="text-sm font-bold text-[#f8fafc]">Матрица успеваемости и допусков к Режиму Мастера</h3>
+              <p class="text-xs text-[#94a3b8]">Измените статус лабы на «Сдано (passed)», чтобы открыть студенту академические решения в чате</p>
+            </div>
+            <button id="refreshMatrixBtn" class="holad-btn-secondary text-xs py-1 px-3 min-h-[32px]" aria-label="Обновить матрицу студентов">
+              🔄 Обновить
+            </button>
+          </div>
+
+          <div class="flex-1 overflow-auto custom-scrollbar">
+            <table class="w-full text-left text-xs border-collapse">
+              <thead>
+                <tr class="border-b border-[rgba(255,255,255,0.08)] text-[#94a3b8] bg-[#0b0f19]/40 uppercase tracking-wider text-[11px]">
+                  <th class="py-3 px-3">Студент</th>
+                  <th class="py-3 px-3">Лаба 1: Базовые типы</th>
+                  <th class="py-3 px-3">Лаба 2: Операторы</th>
+                  <th class="py-3 px-3">Лаба 3: Исключения</th>
+                  <th class="py-3 px-3">Действия</th>
+                </tr>
+              </thead>
+              <tbody id="matrixTableBody" class="divide-y divide-[rgba(255,255,255,0.05)] text-[#f8fafc]">
+                <!-- Строки таблицы генерируются в app.js -->
+                <tr>
+                  <td colspan="5" class="py-8 text-center text-[#94a3b8]">Загрузка матрицы успеваемости...</td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+
+        <!-- ================= ВКЛАДКА 2: GAP ANALYSIS ================= -->
+        <div id="paneGap" class="hidden flex-1 flex flex-col min-h-0">
+          <div class="flex items-center justify-between mb-3 pb-2 border-b border-[rgba(255,255,255,0.06)]">
+            <div>
+              <h3 class="text-sm font-bold text-[#f8fafc]">Анализ пробелов базы знаний (Gap Analysis)</h3>
+              <p class="text-xs text-[#94a3b8]">Вопросы, отклоненные Guardrail из-за отсутствия в материалах (score &lt; 0.42) или инъекций</p>
+            </div>
+            <button id="refreshGapBtn" class="holad-btn-secondary text-xs py-1 px-3 min-h-[32px]" aria-label="Обновить список пробелов">
+              🔄 Обновить
+            </button>
+          </div>
+
+          <div class="flex-1 overflow-auto custom-scrollbar">
+            <table class="w-full text-left text-xs border-collapse">
+              <thead>
+                <tr class="border-b border-[rgba(255,255,255,0.08)] text-[#94a3b8] bg-[#0b0f19]/40 uppercase tracking-wider text-[11px]">
+                  <th class="py-3 px-3">Дата / Время</th>
+                  <th class="py-3 px-3">Вопрос студента</th>
+                  <th class="py-3 px-3">Скор</th>
+                  <th class="py-3 px-3">Причина отклонения Guardrail</th>
+                </tr>
+              </thead>
+              <tbody id="gapTableBody" class="divide-y divide-[rgba(255,255,255,0.05)] text-[#f8fafc]">
+                <!-- Заполняется в app.js -->
+              </tbody>
+            </table>
+          </div>
+        </div>
+
+        <!-- ================= ВКЛАДКА 3: RAG MANAGER ================= -->
+        <div id="paneRag" class="hidden flex-1 flex flex-col min-h-0 overflow-y-auto custom-scrollbar space-y-4">
+          <div class="flex items-center justify-between pb-2 border-b border-[rgba(255,255,255,0.06)]">
+            <div>
+              <h3 class="text-sm font-bold text-[#f8fafc]">Управление базой знаний RAG</h3>
+              <p class="text-xs text-[#94a3b8]">Индексированные методические материалы и векторное хранилище курса</p>
+            </div>
+            <button id="reindexBtn" class="holad-btn-primary text-xs py-1.5 px-4 min-h-[36px]" aria-label="Переиндексировать базу знаний">
+              ⚡ Переиндексировать базу знаний
+            </button>
+          </div>
+
+          <!-- Карточки состояния -->
+          <div class="grid grid-cols-1 md:grid-cols-3 gap-3">
+            <div class="p-3.5 rounded-xl bg-[#0b0f19]/60 border border-[rgba(255,255,255,0.06)]">
+              <span class="text-[11px] text-[#94a3b8] uppercase font-mono">Векторное хранилище</span>
+              <div class="text-sm font-bold text-[#f8fafc] mt-1">SQLite FTS5 + Dense Vector</div>
+              <p class="text-xs text-[#10b981] mt-0.5">Гибридный поиск (BM25 + Векторы)</p>
+            </div>
+            <div class="p-3.5 rounded-xl bg-[#0b0f19]/60 border border-[rgba(255,255,255,0.06)]">
+              <span class="text-[11px] text-[#94a3b8] uppercase font-mono">Порог Guardrail</span>
+              <div class="text-sm font-bold text-[#f8fafc] mt-1">Relevance: 0.42</div>
+              <p class="text-xs text-[#94a3b8] mt-0.5">Отсечение галлюцинаций вне тем курса</p>
+            </div>
+            <div class="p-3.5 rounded-xl bg-[#0b0f19]/60 border border-[rgba(255,255,255,0.06)]">
+              <span class="text-[11px] text-[#94a3b8] uppercase font-mono">Модели МИРЭА</span>
+              <div class="text-sm font-bold text-[#f8fafc] mt-1">EmbeddingGemma 2 + Gemma 4</div>
+              <p class="text-xs text-[#cbd5e1] mt-0.5">Локальный инференс (порты 8085 / 8086)</p>
+            </div>
+          </div>
+
+          <!-- Список методических материалов -->
+          <div class="space-y-2">
+            <h4 class="text-xs font-bold uppercase tracking-wider text-[#94a3b8]">Проиндексированные документы курса:</h4>
+            <div class="grid grid-cols-1 sm:grid-cols-3 gap-3">
+              <div class="p-3 rounded-lg bg-[#0b0f19]/40 border border-[rgba(255,255,255,0.06)] flex items-start gap-2.5">
+                <span class="text-lg">📄</span>
+                <div>
+                  <div class="text-xs font-bold text-[#f8fafc]">data_structures.md</div>
+                  <div class="text-[11px] text-[#94a3b8]">Списки, кортежи, словари, операции</div>
+                </div>
+              </div>
+              <div class="p-3 rounded-lg bg-[#0b0f19]/40 border border-[rgba(255,255,255,0.06)] flex items-start gap-2.5">
+                <span class="text-lg">📄</span>
+                <div>
+                  <div class="text-xs font-bold text-[#f8fafc]">exceptions.md</div>
+                  <div class="text-[11px] text-[#94a3b8]">try..except, else, finally, with</div>
+                </div>
+              </div>
+              <div class="p-3 rounded-lg bg-[#0b0f19]/40 border border-[rgba(255,255,255,0.06)] flex items-start gap-2.5">
+                <span class="text-lg">📄</span>
+                <div>
+                  <div class="text-xs font-bold text-[#f8fafc]">op_exp.md</div>
+                  <div class="text-[11px] text-[#94a3b8]">Операторы //, %, приоритеты, сдвиги</div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Лог / Результат переиндексации -->
+          <div id="reindexResultArea" class="hidden p-3.5 rounded-xl bg-[#0b0f19] border border-[#10b981]/30 text-xs">
+            <div class="flex items-center gap-2 text-[#10b981] font-bold">
+              <span>✅</span> База знаний успешно переиндексирована!
+            </div>
+            <div id="reindexResultText" class="text-[#cbd5e1] mt-1 font-mono">
+              Проиндексировано фрагментов: 15
+            </div>
+          </div>
+
+        </div>
+
+      </div>
+
+    </div>
+
+  </main>
+
+  <!-- ==================== ВСПОМОГАТЕЛЬНЫЕ ЭЛЕМЕНТЫ ==================== -->
+  <div id="toastContainer" aria-live="polite" aria-atomic="true"></div>
+
+  <!-- Основной скрипт логики клиента -->
   <script src="app.js"></script>
 </body>
 </html>

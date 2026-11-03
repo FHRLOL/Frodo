@@ -1,4 +1,5 @@
 from fastapi import APIRouter, Depends, HTTPException, Query, Header, Cookie, Request, status
+from pydantic import BaseModel
 from typing import Optional, List, Dict, Any
 
 from database import db
@@ -11,7 +12,7 @@ from models import (
     StudentMatrixItem,
     LabStatus
 )
-from lti.service import decode_access_token
+from lti.service import decode_access_token, create_access_token
 
 router = APIRouter(prefix="/api", tags=["API Успеваемости и Авторизации"])
 
@@ -106,6 +107,40 @@ def require_instructor(user: Dict[str, Any] = Depends(get_current_user)) -> Dict
 def get_me(user: Dict[str, Any] = Depends(get_current_user)):
     """Получение профиля текущего авторизованного пользователя."""
     return user
+
+class DemoLoginRequest(BaseModel):
+    role: str = "student"
+
+@router.post("/auth/demo-login")
+def demo_login(req: Optional[DemoLoginRequest] = None, role: Optional[str] = Query(None)):
+    """
+    Быстрый переключатель ролей LTI (для локального тестирования и демонстрации комиссии).
+    Выдает валидный JWT токен для студента (student_42) или преподавателя (instructor_1).
+    """
+    target_role = (req.role if req and req.role else None) or role or "student"
+    if target_role not in ["student", "instructor"]:
+        target_role = "student"
+
+    moodle_id = "student_42" if target_role == "student" else "instructor_1"
+    user = db.get_user_by_moodle_id(moodle_id)
+    if not user:
+        name = "Алексей Иванов" if target_role == "student" else "Проф. Смирнов А.В."
+        email = f"{moodle_id}@university.edu"
+        user = db.create_or_update_user(moodle_id, name, email, target_role)
+
+    if target_role == "student":
+        db.ensure_student_progress_records(user["id"])
+
+    token = create_access_token(user)
+    return {
+        "status": "success",
+        "token": token,
+        "user": user
+    }
+
+@router.get("/auth/demo-login")
+def demo_login_get(role: str = Query("student")):
+    return demo_login(role=role)
 
 # ----------------- Эндпоинты Лабораторных Работ -----------------
 
