@@ -2,7 +2,7 @@ import os
 import sys
 import json
 from fastapi import FastAPI, HTTPException, Depends
-from fastapi.responses import HTMLResponse
+from fastapi.responses import HTMLResponse, StreamingResponse
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 from typing import Optional, List, Dict, Any
@@ -20,6 +20,7 @@ from mentor_pipeline import MentorPipeline
 from database import db
 from lti.router import router as lti_router
 from api_routes import router as api_router, get_optional_current_user
+from lti.service import decode_access_token
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
@@ -31,7 +32,7 @@ async def lifespan(app: FastAPI):
 app = FastAPI(
     title="Frodo Mentor API & Visual Inspector",
     description="API ИИ-наставника по курсу Python с LTI 1.1 модулем и контролем сдачи лабораторных",
-    version="0.2.0",
+    version="0.3.0",
     lifespan=lifespan
 )
 
@@ -55,12 +56,14 @@ if os.path.exists(CLIENT_DIR):
 pipeline = MentorPipeline(
     db_path=os.path.join(BASE_DIR, "data", "frodo_knowledge.db"),
     embedder_url="http://localhost:8085/v1/embeddings",
-    relevance_threshold=0.45
+    llm_url="http://localhost:8086/v1",
+    relevance_threshold=0.42
 )
 
 class QueryRequest(BaseModel):
     question: str
     lab_id: Optional[int] = None
+    token: Optional[str] = None
 
 @app.get("/", response_class=HTMLResponse)
 def index_page():
@@ -76,8 +79,10 @@ def health():
     return {
         "status": "ok",
         "embedder": "EmbeddingGemma 2 (port 8085)",
+        "llm": "Gemma 4 E4B (port 8086)",
         "storage": "SQLite FTS5 + Vector",
         "app_db": "SQLite frodo_app.db",
+        "relevance_threshold": pipeline.relevance_threshold,
         "docs_dir": os.path.join(BASE_DIR, "data", "docs")
     }
 
@@ -99,14 +104,21 @@ async def query(req: QueryRequest, current_user: Optional[Dict[str, Any]] = Depe
     if not req.question.strip():
         raise HTTPException(status_code=400, detail="Вопрос не может быть пустым")
 
-    res = pipeline.query(req.question)
+    # Резолвим пользователя из заголовка/cookie либо из поля токена запроса
+    if not current_user and req.token:
+        payload = decode_access_token(req.token)
+        if payload and payload.get("sub"):
+            current_user = db.get_user_by_id(int(payload["sub"]))
 
     user_id = current_user["id"] if current_user else None
+
+    res = pipeline.query(req.question, user_id=user_id, lab_id=req.lab_id)
 
     # Если запрос отсечен Guardrail или не найден в материалах — регистрируем в неотвеченных
     is_rejected = (
         res.get("status") == "REJECTED_BY_GUARDRAIL" or
-        "В предоставленных материалах этого нет" in res.get("answer", "")
+        "В предоставленных материалах этого нет" in res.get("answer", "") or
+        "Запрос отклонен" in res.get("answer", "")
     )
     if is_rejected:
         db.add_unanswered_query(
@@ -119,11 +131,7 @@ async def query(req: QueryRequest, current_user: Optional[Dict[str, Any]] = Depe
     # Сохраняем в историю чата, если известен пользователь
     if user_id:
         citations_str = json.dumps(res.get("citations", []), ensure_ascii=False) if res.get("citations") else None
-        mode = "socratic"
-        if req.lab_id:
-            lab_stat = db.get_student_lab_status(user_id, req.lab_id)
-            if lab_stat and lab_stat.get("status") == "passed":
-                mode = "master"
+        mode = res.get("mode", "socratic")
 
         db.add_chat_message(
             user_id=user_id,
@@ -143,6 +151,39 @@ async def query(req: QueryRequest, current_user: Optional[Dict[str, Any]] = Depe
         )
 
     return res
+
+@app.post("/api/query/stream")
+async def query_stream_endpoint(
+    req: QueryRequest,
+    current_user: Optional[Dict[str, Any]] = Depends(get_optional_current_user)
+):
+    """
+    Потоковый эндпоинт генерации ответов ИИ-наставника (Server-Sent Events).
+    Отдает поток событий:
+    - event: meta (режим: socratic/master, скор релевантности, статус, ttft_ms)
+    - event: token (порции текста)
+    - event: citation (метаданные источника с номерами строк)
+    - event: done (статистика генерации)
+    """
+    if not req.question or not req.question.strip():
+        raise HTTPException(status_code=400, detail="Вопрос не может быть пустым")
+
+    # Резолвим пользователя из заголовка/cookie либо из токена в теле
+    if not current_user and req.token:
+        payload = decode_access_token(req.token)
+        if payload and payload.get("sub"):
+            current_user = db.get_user_by_id(int(payload["sub"]))
+
+    user_id = current_user["id"] if current_user else None
+
+    return StreamingResponse(
+        pipeline.query_stream_sse(
+            question=req.question,
+            user_id=user_id,
+            lab_id=req.lab_id
+        ),
+        media_type="text/event-stream"
+    )
 
 @app.post("/api/reindex")
 def reindex():

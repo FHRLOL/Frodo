@@ -13,6 +13,12 @@ class HybridKnowledgeStore:
     - Слой 3: Метаданные (название документа, раздел, хлебные крошки, строки L_start..L_end).
     """
 
+    STOP_WORDS = {
+        "в", "на", "из", "по", "и", "или", "не", "для", "от", "до", "со", "ко", "за",
+        "при", "как", "что", "где", "чем", "кто", "то", "же", "ли", "бы", "над", "под",
+        "in", "on", "at", "to", "for", "of", "the", "a", "an", "is", "as", "by", "with"
+    }
+
     def __init__(self, db_path: str = "data/frodo_knowledge.db"):
         self.db_path = db_path
         os.makedirs(os.path.dirname(os.path.abspath(db_path)), exist_ok=True)
@@ -66,9 +72,9 @@ class HybridKnowledgeStore:
                 """, (c.chunk_id, c.doc_name, c.section_title, c.breadcrumbs, c.content))
 
     def search_bm25(self, query: str, limit: int = 10) -> List[Dict[str, Any]]:
-        """Полнотекстовый поиск BM25 через SQLite FTS5."""
-        # Очищаем запрос для безопасного FTS5 синтаксиса
-        clean_tokens = [w for w in query.replace('"', ' ').replace("'", " ").replace("-", " ").split() if len(w) > 1]
+        """Полнотекстовый поиск BM25 через SQLite FTS5 с фильтрацией стоп-слов."""
+        raw_words = query.replace('"', ' ').replace("'", " ").replace("-", " ").replace("?", " ").replace("!", " ").replace(".", " ").replace(",", " ").split()
+        clean_tokens = [w for w in raw_words if len(w) > 2 and w.lower() not in self.STOP_WORDS]
         if not clean_tokens:
             return []
         
@@ -86,7 +92,8 @@ class HybridKnowledgeStore:
             """, (fts_query, limit))
             for row in cursor.fetchall():
                 # bm25 в sqlite fts5 возвращает отрицательные значения (меньше = лучше)
-                norm_score = max(0.0, 1.0 / (1.0 + abs(row["bm25_rank"])))
+                abs_rank = abs(row["bm25_rank"])
+                norm_score = max(0.0, abs_rank / (1.0 + abs_rank))
                 results.append({
                     "chunk_id": row["chunk_id"],
                     "doc_name": row["doc_name"],
