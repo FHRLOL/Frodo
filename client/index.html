@@ -1,0 +1,120 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Frodo — ИИ-наставник по курсу Python</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <div class="app-container">
+    <!-- Сайдбар: материалы курса и статус базы знаний -->
+    <aside class="sidebar">
+      <div class="sidebar-header">
+        <div class="logo">
+          <span class="logo-icon">🧙‍♂️</span>
+          <div>
+            <h1>Frodo Mentor</h1>
+            <span class="badge">RAG + RLM</span>
+          </div>
+        </div>
+      </div>
+
+      <div class="sidebar-section">
+        <h3>База знаний курса</h3>
+        <div class="status-card">
+          <div class="status-indicator online"></div>
+          <div class="status-info">
+            <span class="status-title">EmbeddingGemma 2 (Q8_0)</span>
+            <span class="status-subtitle">Локальный llama-server :8085</span>
+          </div>
+        </div>
+        <div class="docs-list">
+          <div class="doc-item active">
+            <span class="doc-icon">📄</span>
+            <div class="doc-meta">
+              <span class="doc-title">data_structures.md</span>
+              <span class="doc-sub">Списки, кортежи, словари</span>
+            </div>
+          </div>
+          <div class="doc-item">
+            <span class="doc-icon">📄</span>
+            <div class="doc-meta">
+              <span class="doc-title">exceptions.md</span>
+              <span class="doc-sub">try..except, else, finally, with</span>
+            </div>
+          </div>
+          <div class="doc-item">
+            <span class="doc-icon">📄</span>
+            <div class="doc-meta">
+              <span class="doc-title">op_exp.md</span>
+              <span class="doc-sub">Операторы //, %, сдвиги</span>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="sidebar-section rules-section">
+        <h3>Правила наставника (RLM)</h3>
+        <ul class="rules-list">
+          <li><span class="rule-badge p95">P95</span> Строгое заземление на контент</li>
+          <li><span class="rule-badge p95">P95</span> Честный отказ при отсутствии данных</li>
+          <li><span class="rule-badge p90">P90</span> Точные сноски на строки</li>
+        </ul>
+      </div>
+
+      <div class="sidebar-footer">
+        <a href="/" class="btn-inspector-link">🔍 Открыть RAG-инспектор</a>
+        <span class="version-tag">Frodo v0.1.0 • Hybrid Store</span>
+      </div>
+    </aside>
+
+    <!-- Основное окно чата -->
+    <main class="chat-container">
+      <header class="chat-header">
+        <div class="chat-title">
+          <h2>Диалог со студентом</h2>
+          <p>Ответы формируются исключительно по материалам курса</p>
+        </div>
+        <div class="header-actions">
+          <button id="clearBtn" class="btn-secondary">Очистить чат</button>
+        </div>
+      </header>
+
+      <div id="messagesArea" class="messages-area">
+        <!-- Приветственное сообщение наставника -->
+        <div class="message mentor">
+          <div class="avatar">🧙‍♂️</div>
+          <div class="message-content">
+            <div class="sender-name">ИИ-наставник</div>
+            <p>Привет! Я твой наставник по курсу Python. Я отвечаю <strong>строго по загруженным методическим материалам</strong> и всегда даю точную ссылку на раздел и строки.</p>
+            <p>Если в материалах ответа нет — я прямо скажу об этом, не пытаясь придумывать или угадывать.</p>
+            <div class="chips-container">
+              <button class="chip" data-query="Почему списки в Python считаются изменяемым типом данных?">Списки и их изменяемость</button>
+              <button class="chip" data-query="Чем кортеж отличается от списка с точки зрения изменения данных? Как правильно создать кортеж, содержащий ровно один элемент со значением 2?">Кортеж из одного элемента</button>
+              <button class="chip" data-query="Что делает оператор // в Python и какой результат даст выражение -13 // 3 согласно материалам?">Оператор // и -13 // 3</button>
+              <button class="chip out-of-scope" data-query="Какова временная сложность проверки принадлежности элемента списку в нотации Big O?">Провокация: Big O (нет в доках)</button>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Поле ввода вопроса -->
+      <footer class="chat-input-area">
+        <form id="chatForm" class="chat-form">
+          <textarea id="questionInput" placeholder="Задайте вопрос по материалам курса (например: как работает блок else в try..except?)..." rows="1"></textarea>
+          <button type="submit" id="sendBtn" class="btn-primary">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M22 2L11 13M22 2L15 22L11 13L2 9L22 2Z"></path>
+            </svg>
+          </button>
+        </form>
+      </footer>
+    </main>
+  </div>
+  <script src="app.js"></script>
+</body>
+</html>

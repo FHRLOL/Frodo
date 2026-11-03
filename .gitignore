@@ -1,0 +1,35 @@
+# Environments & Dependencies
+venv/
+.venv/
+env/
+node_modules/
+
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.egg-info/
+dist/
+build/
+
+# Databases & Runtime Data
+*.db
+*.sqlite
+*.sqlite3
+server/data/*.db
+backend/data/*.db
+
+# Large Models & Binaries
+llama_server/
+models/
+*.gguf
+*.bin
+*.pt
+*.safetensors
+*.onnx
+
+# Logs & Temporary
+*.log
+.cache/
+.DS_Store
+Thumbs.db
