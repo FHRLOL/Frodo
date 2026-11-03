@@ -2,7 +2,7 @@ import os
 import sys
 import json
 from fastapi import FastAPI, HTTPException, Depends
-from fastapi.responses import HTMLResponse, StreamingResponse
+from fastapi.responses import HTMLResponse, StreamingResponse, RedirectResponse
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 from typing import Optional, List, Dict, Any
@@ -65,14 +65,10 @@ class QueryRequest(BaseModel):
     lab_id: Optional[int] = None
     token: Optional[str] = None
 
-@app.get("/", response_class=HTMLResponse)
+@app.get("/")
 def index_page():
-    """Отдает главную страницу наглядного визуального инспектора поиска и ответов."""
-    web_file = os.path.join(BASE_DIR, "web", "index.html")
-    if os.path.exists(web_file):
-        with open(web_file, "r", encoding="utf-8") as f:
-            return f.read()
-    return "<h1>Frodo Visual Inspector: backend/web/index.html not found</h1>"
+    """Перенаправляет на актуальный интерфейс Frodo AI Mentor."""
+    return RedirectResponse(url="/chat", status_code=303)
 
 @app.get("/api/health")
 def health():

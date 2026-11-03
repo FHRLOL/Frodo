@@ -54,16 +54,16 @@ def main():
             print("  [WARN] Сервер эмбеддингов не ответил. Будет использован встроенный фоллбэк.")
 
     print()
-    print("[2/3] Запуск веб-сервера визуального инспектора...")
-    print("  [OK] Порт: http://127.0.0.1:8000")
-    print("  [OK] Чат студента: http://127.0.0.1:8000/chat")
+    print("[2/3] Запуск веб-сервера Frodo AI Mentor...")
+    print("  [OK] Порт сервера: http://127.0.0.1:8000")
+    print("  [OK] Интерфейс (Holad UI): http://127.0.0.1:8000/chat")
 
     # 2. Автоматическое открытие браузера
     print()
-    print("[3/3] Открытие браузера...")
+    print("[3/3] Открытие интерфейса в браузере...")
     def open_browser():
         time.sleep(1.2)
-        webbrowser.open("http://127.0.0.1:8000")
+        webbrowser.open("http://127.0.0.1:8000/chat")
 
     import threading
     threading.Thread(target=open_browser, daemon=True).start()
