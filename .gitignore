@@ -33,3 +33,4 @@ models/
 .cache/
 .DS_Store
 Thumbs.db
+server/benchmark/results_eval_*.csv

@@ -44,6 +44,27 @@ class MentorPipeline:
         self.store = HybridKnowledgeStore(db_path=db_path)
         self.llm_url = llm_url
         self.relevance_threshold = relevance_threshold
+        self._llm_online_cached = False
+        self._last_llm_check = 0.0
+
+    def is_llm_online(self) -> bool:
+        """Быстрая проверка доступности сервера LLM с кешированием на 5 секунд."""
+        now = time.time()
+        if (now - self._last_llm_check) < 5.0:
+            return self._llm_online_cached
+        
+        import socket
+        from urllib.parse import urlparse
+        try:
+            parsed = urlparse(self.llm_url)
+            host = parsed.hostname or "127.0.0.1"
+            port = parsed.port or 8086
+            with socket.create_connection((host, port), timeout=0.08):
+                self._llm_online_cached = True
+        except Exception:
+            self._llm_online_cached = False
+        self._last_llm_check = now
+        return self._llm_online_cached
 
     def index_course_materials(self, docs_dir: str = "data/docs") -> int:
         """
@@ -153,8 +174,8 @@ class MentorPipeline:
             dialogue_history=dialogue_history
         )
 
-        # 4. Вызов LLM (Gemma 4 E4B на порту 8086)
-        llm_response = self._call_local_llm(messages)
+        # 4. Вызов LLM (Gemma 4 E4B на порту 8086 при наличии)
+        llm_response = self._call_local_llm(messages) if self.is_llm_online() else None
         if llm_response:
             answer = PromptGuardrail.filter_output(llm_response)
             status = "ANSWERED_BY_LLM"
@@ -272,26 +293,29 @@ class MentorPipeline:
         accumulated_tokens = []
 
         # 4. Потоковая генерация через Gemma 4 E4B или оффлайн фоллбэк
-        stream_gen = self._stream_llm(messages)
-        is_llm_active = True
+        first_token_time = None
+        accumulated_tokens = []
+        is_llm_active = self.is_llm_online()
 
-        try:
-            async for token in stream_gen:
-                if first_token_time is None:
-                    first_token_time = time.time()
-                    ttft_ms = int((first_token_time - start_time) * 1000)
-                    meta_data = {
-                        "mode": mode,
-                        "score": score,
-                        "status": "ANSWERED_BY_LLM",
-                        "ttft_ms": ttft_ms
-                    }
-                    yield f"event: meta\ndata: {json.dumps(meta_data, ensure_ascii=False)}\n\n"
+        if is_llm_active:
+            try:
+                stream_gen = self._stream_llm(messages)
+                async for token in stream_gen:
+                    if first_token_time is None:
+                        first_token_time = time.time()
+                        ttft_ms = int((first_token_time - start_time) * 1000)
+                        meta_data = {
+                            "mode": mode,
+                            "score": score,
+                            "status": "ANSWERED_BY_LLM",
+                            "ttft_ms": ttft_ms
+                        }
+                        yield f"event: meta\ndata: {json.dumps(meta_data, ensure_ascii=False)}\n\n"
 
-                accumulated_tokens.append(token)
-                yield f"event: token\ndata: {json.dumps({'token': token}, ensure_ascii=False)}\n\n"
-        except Exception:
-            is_llm_active = False
+                    accumulated_tokens.append(token)
+                    yield f"event: token\ndata: {json.dumps({'token': token}, ensure_ascii=False)}\n\n"
+            except Exception:
+                is_llm_active = False
 
         if not is_llm_active or not accumulated_tokens:
             # Оффлайн фоллбэк генератор

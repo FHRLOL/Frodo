@@ -25,19 +25,19 @@ class PromptGuardrail:
     # Шаблоны атак на системный промпт и джейлбрейков
     INJECTION_PATTERNS: List[Tuple[str, re.Pattern]] = [
         ("bypass_rules", re.compile(
-            r"(игнорируй|забудь|отмени|сбрось|пренебреги)\s+(все\s+)?(предыдущие\s+|свои\s+|системные\s+)?(правила|инструкции|ограничения|указания|промпт)",
+            r"(игнорируй|забудь|отмени|сбрось|пренебреги)\s+(все\s+)?((предыдущие|свои|системные|исходные)\s+)*(правила|инструкции|ограничения|указания|промпт)",
             re.IGNORECASE
         )),
         ("english_bypass", re.compile(
-            r"(ignore|disregard|forget|bypass|override)\s+(all\s+)?(previous\s+|system\s+)?(instructions|rules|prompts|commands|constraints)",
+            r"(ignore|disregard|forget|bypass|override)\s+(all\s+)?((previous|system|safety|initial)\s+)*(instructions|rules|prompts|commands|constraints)",
             re.IGNORECASE
         )),
         ("leak_prompt", re.compile(
-            r"(выведи|покажи|напечатай|процитируй|скажи)\s+(свой\s+|твой\s+|системный\s+)?(системный\s+)?(промпт|инструкци[ию]|system\s*prompt)",
+            r"(выведи|покажи|напечатай|процитируй|скажи)\s+(свой\s+|твой\s+)?((системный|исходный|скрытый)\s+)*(промпт|инструкци[ию]|system\s*prompt)",
             re.IGNORECASE
         )),
         ("english_leak_prompt", re.compile(
-            r"(show|display|reveal|print|repeat|output|what\s+is)\s+(your\s+)?(initial\s+|system\s+)?(prompt|instructions)",
+            r"(show|display|reveal|print|repeat|output|what\s+is)\s+(your\s+)?((initial|system|hidden|developer)\s+)*(prompt|instructions)",
             re.IGNORECASE
         )),
         ("jailbreak_dan", re.compile(
