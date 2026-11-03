@@ -1,0 +1,39 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <title>LTI Launch Test Form</title>
+    <style>
+        body { font-family: system-ui, sans-serif; max-width: 650px; margin: 40px auto; padding: 20px; line-height: 1.5; }
+        .card { border: 1px solid #e2e8f0; border-radius: 8px; padding: 24px; box-shadow: 0 4px 6px -1px rgba(0,0,0,0.1); }
+        button { background: #2563eb; color: white; padding: 10px 20px; border: none; border-radius: 6px; cursor: pointer; font-size: 16px; }
+        button:hover { background: #1d4ed8; }
+        pre { background: #f8fafc; padding: 12px; border-radius: 6px; overflow-x: auto; font-size: 13px; }
+    </style>
+</head>
+<body>
+    <div class="card">
+        <h2>🚀 Frodo LTI 1.1 Launch Test</h2>
+        <p>Имитация отправки формы из Moodle для пользователя: <strong>Алексей Иванов</strong> (роль: <code>urn:lti:role:ims/lis/Learner</code>)</p>
+        <form action="http://127.0.0.1:8000/lti/launch" method="POST">
+        <input type="hidden" name="oauth_consumer_key" value="frodo_lti_key"/>
+        <input type="hidden" name="oauth_signature_method" value="HMAC-SHA1"/>
+        <input type="hidden" name="oauth_timestamp" value="1793706864"/>
+        <input type="hidden" name="oauth_nonce" value="681b02515abe49ca9d8765673be92808"/>
+        <input type="hidden" name="oauth_version" value="1.0"/>
+        <input type="hidden" name="lti_message_type" value="basic-lti-launch-request"/>
+        <input type="hidden" name="lti_version" value="LTI-1p0"/>
+        <input type="hidden" name="resource_link_id" value="course_python_frodo_101"/>
+        <input type="hidden" name="context_id" value="python_base_2026"/>
+        <input type="hidden" name="context_title" value="Курс Python: Базовый уровень"/>
+        <input type="hidden" name="user_id" value="student_42"/>
+        <input type="hidden" name="roles" value="urn:lti:role:ims/lis/Learner"/>
+        <input type="hidden" name="lis_person_name_full" value="Алексей Иванов"/>
+        <input type="hidden" name="lis_person_contact_email_primary" value="student_42@university.edu"/>
+        <input type="hidden" name="tool_consumer_instance_name" value="University LMS Moodle"/>
+        <input type="hidden" name="oauth_signature" value="BRIBtTLk3KU1P/IFyzkxSzZR1mw="/>
+            <button type="submit">Войти через LTI в Frodo</button>
+        </form>
+    </div>
+</body>
+</html>
