@@ -305,7 +305,7 @@ function updateMentorModeBanner() {
     bannerTitle.textContent = 'Режим наставника (Сократ)';
     bannerBadge.className = 'holad-badge holad-badge-warning text-[11px]';
     bannerBadge.textContent = p && p.status === 'in_progress' ? 'В процессе выполнения' : 'Не начато';
-    bannerDesc.textContent = 'Наставник не пишет код за вас, а помогает наводящими вопросами и указывает на нестыковки в логике.';
+    bannerDesc.textContent = 'Наставник подробно объясняет теорию и правила курса по теме вопроса и помогает наводящими вопросами, не решая задачу за вас.';
   }
 }
 
