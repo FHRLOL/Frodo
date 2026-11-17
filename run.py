@@ -29,6 +29,13 @@ def check_embedding_server():
 def start_embedding_server():
     """Запускает автономный llama-server (EmbeddingGemma 2) в свернутом окне."""
     bat_path = os.path.join(LLAMA_DIR, "start_embedding_server.bat")
+    emb_path = os.path.join(MODELS_DIR, "embeddinggemma-2-Q8_0.gguf")
+
+    if not os.path.exists(emb_path):
+        print("  [INFO] Веса embeddinggemma-2-Q8_0.gguf пока не обнаружены в models/.")
+        print("         Используется встроенный быстрый фоллбэк поиска.")
+        return False
+
     if os.path.exists(bat_path):
         print("  [>] Запуск llama-server (EmbeddingGemma 2, порт :8085)...")
         subprocess.Popen(
@@ -115,15 +122,30 @@ def main():
             print("  [INFO] Инференс-сервер LLM не активен. Активен режим эталонного RAG-наставника.")
 
     print()
-    # 4. Запуск веб-сервера Frodo AI Mentor
-    print("[4/4] Запуск веб-сервера Frodo AI Mentor...")
+    # 4. Проверка и сборка фронтенда Frodo React UI
+    print("[4/5] Проверка фронтенда Frodo (React + Vite)...")
+    frontend_dir = os.path.join(ROOT_DIR, "frontend")
+    dist_index = os.path.join(frontend_dir, "dist", "index.html")
+    if not os.path.exists(dist_index):
+        print("  [>] Сборка фронтенда ('npm run build')...")
+        try:
+            subprocess.run(["cmd.exe", "/c", "npm run build"], cwd=frontend_dir, check=True)
+            print("  [OK] Фронтенд успешно собран в frontend/dist.")
+        except Exception as e:
+            print(f"  [WARN] Ошибка при автоматической сборке: {e}")
+    else:
+        print("  [OK] Фронтенд собран и готов к раздаче (frontend/dist).")
+
+    print()
+    # 5. Запуск веб-сервера Frodo AI Mentor
+    print("[5/5] Запуск веб-сервера Frodo AI Mentor...")
     print("  [OK] Порт сервера: http://127.0.0.1:8000")
-    print("  [OK] Интерфейс (Holad UI): http://127.0.0.1:8000/chat")
+    print("  [OK] Интерфейс (Frodo React UI): http://127.0.0.1:8000")
 
     # Автоматическое открытие браузера
     def open_browser():
         time.sleep(1.2)
-        webbrowser.open("http://127.0.0.1:8000/chat")
+        webbrowser.open("http://127.0.0.1:8000")
 
     import threading
     threading.Thread(target=open_browser, daemon=True).start()

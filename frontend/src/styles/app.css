@@ -415,6 +415,10 @@
   font-family: var(--font-mono);
   font-size: 14px;
   color: var(--ink);
+  white-space: pre-wrap;
+  word-break: break-word;
+  display: block;
+  line-height: 1.5;
 }
 
 .code-caption {
@@ -1464,4 +1468,178 @@
   .access-field {
     min-width: 0;
   }
+}
+
+
+/* ---------- User Indicator & Demo Role Switcher ---------- */
+.user-indicator {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.user-indicator--compact {
+  gap: 8px;
+}
+
+.user-profile {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 13px;
+}
+
+.user-name {
+  font-weight: 500;
+  color: var(--ink);
+  max-width: 140px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.user-role-badge {
+  display: inline-flex;
+  align-items: center;
+  padding: 2px 8px;
+  font-size: 11px;
+  font-weight: 600;
+  border-radius: var(--radius-sm);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.user-role-badge--instructor {
+  background: var(--green-100);
+  color: var(--green-900);
+  border: 1px solid var(--green-700);
+}
+
+.user-role-badge--student {
+  background: var(--peach);
+  color: var(--brown);
+  border: 1px solid var(--peach-line);
+}
+
+.user-role-badge--guest {
+  background: var(--cool);
+  color: var(--muted);
+  border: 1px solid var(--line);
+}
+
+.demo-switcher {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  background: var(--surface);
+  border: 1px solid var(--line-strong);
+  border-radius: var(--radius-md);
+  padding: 2px 6px;
+}
+
+.demo-label {
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--muted);
+  text-transform: uppercase;
+}
+
+.demo-buttons {
+  display: flex;
+  gap: 2px;
+}
+
+.demo-btn {
+  background: transparent;
+  border: none;
+  border-radius: var(--radius-sm);
+  padding: 3px 8px;
+  font-size: 12px;
+  cursor: pointer;
+  color: var(--muted);
+  transition: all 0.15s ease;
+}
+
+.demo-btn:hover {
+  color: var(--ink);
+  background: var(--green-050);
+}
+
+.demo-btn.is-active {
+  background: var(--green-700);
+  color: #fff;
+  font-weight: 600;
+}
+
+/* Sidebar demo switcher */
+.side-demo {
+  margin: 8px 0 16px;
+  padding: 8px 10px;
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: var(--radius-md);
+}
+
+.side-demo-title {
+  display: block;
+  font-size: 11px;
+  color: #9fb2a7;
+  margin-bottom: 6px;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.side-demo-toggle {
+  display: flex;
+  gap: 4px;
+}
+
+.side-demo-btn {
+  flex: 1;
+  padding: 4px 6px;
+  font-size: 11px;
+  background: rgba(255, 255, 255, 0.08);
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  color: #c6d4cb;
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.side-demo-btn:hover {
+  background: rgba(255, 255, 255, 0.16);
+  color: #fff;
+}
+
+.side-demo-btn.is-active {
+  background: var(--green-700);
+  color: #fff;
+  border-color: #fff;
+  font-weight: 600;
+}
+
+/* Access Denied Banner & Role Guard */
+.access-denied-banner {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 12px 20px;
+  background: var(--accent-100);
+  border-bottom: 1px solid var(--accent-200);
+  color: var(--accent-strong);
+  font-size: 14px;
+  font-weight: 500;
+}
+
+.access-denied-icon {
+  font-size: 16px;
+}
+
+.role-guard-loading {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 200px;
+  font-size: 14px;
+  color: var(--muted);
 }

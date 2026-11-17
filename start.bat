@@ -4,7 +4,7 @@ cd /d "%~dp0"
 
 echo ======================================================================
 echo    FRODO AI MENTOR: Starting System (Gemma 4 + EmbeddingGemma 2)
-echo    UI: Holad Design System (LTI 1.1 + Moodle Integration)
+echo    UI: Frodo React UI (LTI 1.1 + Moodle Integration)
 echo ======================================================================
 echo.
 

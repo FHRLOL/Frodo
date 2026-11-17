@@ -40,4 +40,22 @@ describe('маршрутизация приложения', () => {
 
     expect(screen.getByRole('heading', { level: 2, name: 'Спроси по лабораторной' })).toBeInTheDocument()
   })
+
+  it('блокирует доступ студента к /teacher и показывает предупреждение', () => {
+    renderApp('/teacher', { role: 'student' })
+
+    expect(screen.getByRole('alert')).toHaveTextContent('Доступ ограничен: раздел доступен только преподавателям курса.')
+    expect(screen.getByRole('heading', { level: 2, name: 'Спроси по лабораторной' })).toBeInTheDocument()
+  })
+
+  it('переключает роль пользователя через демо-переключатель', async () => {
+    const user = userEvent.setup()
+    renderApp('/')
+
+    // Находим кнопки демо-переключателя
+    const studentButtons = screen.getAllByRole('button', { name: 'Студент' })
+    await user.click(studentButtons[0])
+
+    expect(screen.getAllByText(/Студент/i).length).toBeGreaterThan(0)
+  })
 })

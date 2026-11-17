@@ -127,14 +127,22 @@ class PromptGuardrail:
     @classmethod
     def filter_output(cls, response: str) -> str:
         """
-        Выходной фильтр (Output Guardrail): удаляет случайные утечки служебных инструкций
-        или системных промптов в генерации LLM.
+        Выходной фильтр (Output Guardrail): удаляет случайные утечки служебных инструкций,
+        блоков размышлений (<thought>...</thought>) или системных промптов в генерации LLM.
         """
         if not response:
             return ""
 
         cleaned = response
-        # Проверяем на прямое цитирование системных правил
+
+        # 1. Удаляем блоки размышлений Thinking Mode (<thought>...</thought>, <think>...</think>)
+        cleaned = re.sub(r"<\s*thought\b[^>]*>[\s\S]*?<\s*/\s*thought\s*>", "", cleaned, flags=re.IGNORECASE)
+        cleaned = re.sub(r"<\s*think\b[^>]*>[\s\S]*?<\s*/\s*think\s*>", "", cleaned, flags=re.IGNORECASE)
+        # Если тег остался незакрытым в начале генерации
+        cleaned = re.sub(r"^\s*<\s*(?:thought|think)\b[^>]*>[\s\S]*?(?:(?:\r?\n){2,}|$)", "", cleaned, flags=re.IGNORECASE)
+        cleaned = re.sub(r"<\s*/?\s*(?:thought|think)\b[^>]*>", "", cleaned, flags=re.IGNORECASE)
+
+        # 2. Проверяем на прямое цитирование системных правил
         for pattern in cls.SYSTEM_LEAK_PATTERNS:
             if pattern.search(cleaned):
                 # Удаляем строки, содержащие утечки
@@ -142,6 +150,10 @@ class PromptGuardrail:
                 safe_lines = [line for line in lines if not pattern.search(line)]
                 cleaned = "\n".join(safe_lines).strip()
 
+        # 3. Удаляем случайные заголовки H1-H3 на первой строке, которые ломают верстку карточки
+        cleaned = re.sub(r"^\s*#{1,3}\s+.*?(?:\r?\n)+", "", cleaned)
+
+        cleaned = cleaned.strip()
         if not cleaned:
             return NOT_FOUND_MESSAGE
 

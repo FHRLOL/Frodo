@@ -3,6 +3,10 @@ venv/
 .venv/
 env/
 node_modules/
+.env
+.env.local
+.env.*.local
+!.env.example
 
 # Python
 __pycache__/

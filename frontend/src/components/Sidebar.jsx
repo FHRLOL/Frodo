@@ -1,16 +1,22 @@
 import { Link, NavLink } from 'react-router-dom'
 import Logo from './Logo.jsx'
+import { useAuth } from '../context/AuthContext.jsx'
 
 function navClass({ isActive }) {
   return isActive ? 'nav-link is-active' : 'nav-link'
 }
 
 export default function Sidebar({ teacher }) {
+  const { user, role } = useAuth()
+
+  const displayName = user?.name || (role === 'instructor' ? 'Преподаватель' : 'Студент')
+  const roleName = role === 'instructor' ? 'Преподаватель' : 'Студент'
+
   return (
     <aside className="sidebar">
       <Logo />
 
-      <p className="side-role">{teacher ? 'Преподаватель' : 'Учебный курс'}</p>
+      <p className="side-role">{user ? `${displayName} · ${roleName}` : (teacher ? 'Преподаватель' : 'Учебный курс')}</p>
       <p className="side-course">Локальные LLM и RAG</p>
 
       <nav className="side-nav" aria-label="Навигация">

@@ -299,7 +299,8 @@ class MentorPipeline:
 
         if is_llm_active:
             try:
-                stream_gen = self._stream_llm(messages)
+                raw_stream = self._stream_llm(messages)
+                stream_gen = self._limit_thinking_tokens(raw_stream, max_thought_tokens=256, strip_thoughts=True)
                 async for token in stream_gen:
                     if first_token_time is None:
                         first_token_time = time.time()
@@ -331,10 +332,15 @@ class MentorPipeline:
             }
             yield f"event: meta\ndata: {json.dumps(meta_data, ensure_ascii=False)}\n\n"
 
-            # Стримим фоллбэк кусочками для имитации потока
+            # Стримим фоллбэк кусочками для имитации потока с ограничением Thinking Mode
             words = fallback_answer.split(" ")
-            for i, word in enumerate(words):
-                chunk_str = word if i == len(words) - 1 else word + " "
+            async def _fallback_word_gen():
+                for i, word in enumerate(words):
+                    chunk_str = word if i == len(words) - 1 else word + " "
+                    yield chunk_str
+
+            limited_fallback = self._limit_thinking_tokens(_fallback_word_gen(), max_thought_tokens=256, strip_thoughts=True)
+            async for chunk_str in limited_fallback:
                 accumulated_tokens.append(chunk_str)
                 yield f"event: token\ndata: {json.dumps({'token': chunk_str}, ensure_ascii=False)}\n\n"
                 await asyncio.sleep(0.01)
@@ -374,6 +380,170 @@ class MentorPipeline:
                 )
             except Exception as e:
                 print(f"[MentorPipeline] Ошибка сохранения сообщений в БД: {e}")
+
+    @staticmethod
+    async def _limit_thinking_tokens(
+        stream: AsyncGenerator[str, None],
+        max_thought_tokens: int = 256,
+        strip_thoughts: bool = False
+    ) -> AsyncGenerator[str, None]:
+        """
+        Отслеживает токены внутри тегов <thought>...</thought>.
+        При достижении лимита max_thought_tokens (256 токенов):
+        1. Принудительно эмиттирует закрывающий тег </thought>.
+        2. Переводит поток генерации на ответ студенту, подавляя избыточные мысли
+           до появления исходного закрывающего тега модели.
+
+        Если strip_thoughts=True (боевой режим SSE для UI):
+        - Полностью скрывает служебные теги <thought>/</thought> и сами токены размышлений
+          от студента, передавая в интерфейс исключительно чистый ответ.
+        """
+        in_thought = False
+        thought_tokens_count = 0
+        thought_closed = False
+        thought_force_closed = False
+        suppressing_excess = False
+        excess_count = 0
+        header_stripped = False
+        buffer = ""
+
+        async for chunk in stream:
+            buffer += chunk
+
+            while buffer:
+                # 1. До блока мысли: ищем открывающий тег <thought>
+                if not in_thought and not thought_closed and not thought_force_closed:
+                    if "<thought>" in buffer:
+                        idx = buffer.index("<thought>")
+                        before = buffer[:idx]
+                        if before:
+                            yield before
+                        if not strip_thoughts:
+                            yield "<thought>"
+                        in_thought = True
+                        thought_tokens_count = 0
+                        buffer = buffer[idx + len("<thought>"):]
+                        continue
+                    else:
+                        matched_prefix = None
+                        for prefix in ("<thought>"[:i] for i in range(len("<thought>") - 1, 0, -1)):
+                            if buffer.endswith(prefix):
+                                matched_prefix = prefix
+                                break
+                        if matched_prefix:
+                            to_yield = buffer[:-len(matched_prefix)]
+                            if to_yield:
+                                yield to_yield
+                            buffer = matched_prefix
+                            break
+                        else:
+                            yield buffer
+                            buffer = ""
+                            break
+
+                # 2. Внутри мысли: считаем токены до </thought> или до лимита
+                elif in_thought:
+                    if "</thought>" in buffer:
+                        idx = buffer.index("</thought>")
+                        thought_chunk = buffer[:idx]
+                        if thought_chunk:
+                            if not strip_thoughts:
+                                yield thought_chunk
+                            thought_tokens_count += 1
+                        if not strip_thoughts:
+                            yield "</thought>"
+                        in_thought = False
+                        thought_closed = True
+                        buffer = buffer[idx + len("</thought>"):]
+                        continue
+                    else:
+                        matched_prefix = None
+                        for prefix in ("</thought>"[:i] for i in range(len("</thought>") - 1, 0, -1)):
+                            if buffer.endswith(prefix):
+                                matched_prefix = prefix
+                                break
+
+                        if matched_prefix:
+                            to_process = buffer[:-len(matched_prefix)]
+                            buffer = matched_prefix
+                        else:
+                            to_process = buffer
+                            buffer = ""
+
+                        if to_process:
+                            thought_tokens_count += 1
+                            if thought_tokens_count < max_thought_tokens:
+                                if not strip_thoughts:
+                                    yield to_process
+                            elif thought_tokens_count == max_thought_tokens:
+                                if not strip_thoughts:
+                                    yield to_process
+                                    yield "\n</thought>\n"
+                                in_thought = False
+                                thought_force_closed = True
+                                suppressing_excess = True
+                        break
+
+                # 3. Принудительное закрытие: подавляем лишние токены размышлений до </thought>
+                elif suppressing_excess:
+                    if "</thought>" in buffer:
+                        idx = buffer.index("</thought>")
+                        buffer = buffer[idx + len("</thought>"):]
+                        suppressing_excess = False
+                        thought_closed = True
+                        continue
+                    else:
+                        excess_count += 1
+                        if excess_count > 128:
+                            suppressing_excess = False
+                            if not strip_thoughts:
+                                yield buffer
+                            buffer = ""
+                        else:
+                            buffer = ""
+                        break
+
+                # 4. Основной ответ студенту (после закрытия мысли)
+                else:
+                    if "</thought>" in buffer:
+                        idx = buffer.index("</thought>")
+                        before = buffer[:idx]
+                        after = buffer[idx + len("</thought>"):]
+                        if before:
+                            yield before
+                        buffer = after
+                        continue
+
+                    if strip_thoughts and not header_stripped:
+                        buffer = buffer.lstrip("\r\n ")
+                        if buffer.startswith("#"):
+                            if "\n" in buffer:
+                                buffer = buffer.split("\n", 1)[1].lstrip("\r\n ")
+                                header_stripped = True
+                            else:
+                                break
+                        else:
+                            header_stripped = True
+
+                    yield buffer
+                    buffer = ""
+                    break
+
+        if buffer:
+            if in_thought:
+                if not strip_thoughts:
+                    yield buffer
+                    yield "\n</thought>\n"
+            elif not suppressing_excess:
+                if "</thought>" in buffer and (thought_closed or thought_force_closed):
+                    buffer = buffer.replace("</thought>", "")
+                if strip_thoughts and not header_stripped and buffer.startswith("#"):
+                    if "\n" in buffer:
+                        buffer = buffer.split("\n", 1)[1]
+                    else:
+                        buffer = ""
+                if buffer:
+                    yield buffer
 
     async def _stream_llm(self, messages: List[Dict[str, str]]) -> AsyncGenerator[str, None]:
         """
@@ -436,6 +606,96 @@ class MentorPipeline:
         except Exception:
             return None
 
+    @staticmethod
+    def _get_master_code_sample(question: str, sec: str) -> str:
+        q = question.lower()
+        if any(w in q for w in ("список", "списки", "append", "sort", "del", "изменяем")):
+            return (
+                "\n\nПример практической реализации:\n"
+                "```python\n"
+                "# Создание изменяемого списка и базовые операции\n"
+                "fruits = ['яблоко', 'банан']\n"
+                "fruits.append('груша')  # Метод append() добавляет элемент в конец\n"
+                "fruits.sort()           # Метод sort() изменяет исходный список на месте\n"
+                "del fruits[0]           # Оператор del удаляет элемент по индексу\n"
+                "print('Итоговый список:', fruits)\n"
+                "```"
+            )
+        elif any(w in q for w in ("кортеж", "tuple", "(2,)", "singleton")):
+            return (
+                "\n\nПример практической реализации:\n"
+                "```python\n"
+                "# Кортеж из одного элемента обязательно оформляется с запятой:\n"
+                "singleton = (2,)\n"
+                "print(singleton, type(singleton))  # (2,) <class 'tuple'>\n\n"
+                "# Кортеж является неизменяемым типом данных (immutable):\n"
+                "# singleton[0] = 5  # Вызовет исключение TypeError\n"
+                "```"
+            )
+        elif any(w in q for w in ("//", "делен", "-13")):
+            return (
+                "\n\nПример практической реализации:\n"
+                "```python\n"
+                "# Оператор // выполняет деление с округлением вниз (к меньшему целому):\n"
+                "result = -13 // 3\n"
+                "print(f'-13 // 3 = {result}')  # Выведет: -5\n"
+                "```"
+            )
+        elif any(w in q for w in ("try", "except", "else")):
+            return (
+                "\n\nПример практической реализации:\n"
+                "```python\n"
+                "try:\n"
+                "    val = int('42')\n"
+                "except ValueError as e:\n"
+                "    print('Перехвачена ошибка:', e)\n"
+                "else:\n"
+                "    # Блок else выполняется ТОЛЬКО тогда, когда исключений НЕ возникло:\n"
+                "    print('Исключений не возникло, результат:', val)\n"
+                "```"
+            )
+        elif any(w in q for w in ("finally", "with", "__exit__", "закрыт")):
+            return (
+                "\n\nПример практической реализации:\n"
+                "```python\n"
+                "# Конструкция with автоматически вызывает метод __exit__ для закрытия файла:\n"
+                "with open('demo.txt', 'w', encoding='utf-8') as f:\n"
+                "    f.write('Frodo Safe Resource Management')\n"
+                "# Здесь файл уже гарантированно закрыт\n"
+                "```"
+            )
+        elif "raise" in q:
+            return (
+                "\n\nПример практической реализации:\n"
+                "```python\n"
+                "# Генерация исключения с помощью оператора raise:\n"
+                "def check_positive(num):\n"
+                "    if num <= 0:\n"
+                "        raise ValueError('Значение должно быть больше 0')\n"
+                "    return num\n"
+                "```"
+            )
+        elif any(w in q for w in ("словар", "dict")):
+            return (
+                "\n\nПример практической реализации:\n"
+                "```python\n"
+                "# Создание словаря и удаление пары ключ-значение через del:\n"
+                "student = {'name': 'Иван', 'group': 'ИВТ-1'}\n"
+                "del student['group']  # Удаление пары по ключу\n"
+                "print(student)\n"
+                "```"
+            )
+        else:
+            return (
+                f"\n\nПример практической реализации:\n"
+                f"```python\n"
+                f"# Практический пример по теме «{sec}»\n"
+                f"data = [1, 2, 3]\n"
+                f"result = [x * 2 for x in data]\n"
+                f"print('Результат:', result)\n"
+                f"```"
+            )
+
     def _generate_fallback_response(
         self,
         question: str,
@@ -445,9 +705,9 @@ class MentorPipeline:
     ) -> Tuple[str, str]:
         """
         Интеллектуальный фоллбэк генератор ответов для оффлайн режима и тестов.
-        Генерирует ответы с тегами Thinking Mode (<thought>...</thought>),
+        Генерирует чистые структурированные ответы без утечек служебных тегов,
         строго различая Сократовский режим (наводящие вопросы, запрет кода)
-        и Режим Мастера (исчерпывающий разбор, примеры кода).
+        и Режим Мастера (исчерпывающий академический разбор, профильные примеры кода).
         """
         doc = top_chunk.get("doc_name", "")
         sec = top_chunk.get("section_title", "")
@@ -456,16 +716,6 @@ class MentorPipeline:
         content_snippet = top_chunk.get("content", "")[:350].strip()
 
         if mode == "socratic":
-            # Сократовский режим: подробное изложение теории из материалов + наводящий вопрос (без готового решения задания)
-            thought_block = (
-                f"<thought>\n"
-                f"Студент еще не сдал лабораторную. Анализирую запрос: '{question}'.\n"
-                f"В фрагменте {doc} ({sec}) содержится необходимый теоретический базис.\n"
-                f"Излагаю теорию и принципы из курса, но не пишу итоговый код решения за студента.\n"
-                f"Формулирую наводящий вопрос для проверки понимания.\n"
-                f"</thought>\n"
-            )
-            
             if benchmark_match and benchmark_match.get("ground_truth"):
                 theory_text = benchmark_match["ground_truth"]
             else:
@@ -480,22 +730,7 @@ class MentorPipeline:
             )
             status = "SOCRATIC_GUIDANCE"
         else:
-            # Режим мастера: подробное академическое объяснение, разбор синтаксиса, примеры кода
-            thought_block = (
-                f"<thought>\n"
-                f"Лабораторная успешно сдана. Студент изучает углубленный материал.\n"
-                f"Формирую исчерпывающий разбор концепта '{sec}' с разбором синтаксиса и примером кода для защиты.\n"
-                f"</thought>\n"
-            )
-            code_sample = (
-                f"\n\nПример практической реализации:\n"
-                f"```python\n"
-                f"# Академический пример для защиты темы «{sec}»\n"
-                f"data = [1, 2, 3]\n"
-                f"result = [x * 2 for x in data]\n"
-                f"print(f'Результат: {{result}}')\n"
-                f"```"
-            )
+            code_sample = self._get_master_code_sample(question, sec)
             if benchmark_match and benchmark_match.get("ground_truth"):
                 answer_body = f"{benchmark_match['ground_truth']}{code_sample}"
             else:
@@ -505,8 +740,7 @@ class MentorPipeline:
                 )
             status = "MASTER_EXPLANATION"
 
-        full_answer = f"{thought_block}{answer_body}\n\n[Источник: {doc}, раздел «{sec}», строки {l_start}–{l_end}]"
-        return full_answer, status
+        return answer_body, status
 
     def _find_benchmark_match(self, question: str) -> Optional[Dict[str, Any]]:
         """Ищет вопрос в эталонном датасете для сравнения с эталоном."""
@@ -525,3 +759,34 @@ class MentorPipeline:
         except Exception:
             pass
         return None
+
+    def cleanup_idle_slots(self) -> int:
+        """
+        Проверяет состояние слотов llama-server и сбрасывает зависшие/неактивные слоты
+        для освобождения VRAM под новых пользователей (Idle KV-Cache Eviction).
+        """
+        if not self.is_llm_online():
+            return 0
+        try:
+            base_url = self.llm_url.rsplit("/v1", 1)[0]
+            url = f"{base_url}/slots"
+            req = urllib.request.Request(url, headers={"User-Agent": "Frodo-Cleaner/1.0"})
+            with urllib.request.urlopen(req, timeout=1.5) as resp:
+                slots = json.loads(resp.read().decode("utf-8"))
+
+            released = 0
+            for slot in slots:
+                slot_id = slot.get("id")
+                # Если слот не в обработке и удерживает кэш
+                if not slot.get("is_processing", False) and slot.get("n_past", 0) > 0:
+                    erase_url = f"{base_url}/slots/{slot_id}?action=erase"
+                    erase_req = urllib.request.Request(erase_url, method="POST")
+                    try:
+                        with urllib.request.urlopen(erase_req, timeout=1.0):
+                            released += 1
+                    except Exception:
+                        pass
+            return released
+        except Exception:
+            return 0
+

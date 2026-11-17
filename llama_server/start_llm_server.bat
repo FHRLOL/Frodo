@@ -26,11 +26,12 @@ llama-server.exe ^
   --port %PORT% ^
   --host 127.0.0.1 ^
   -ngl 99 ^
-  -c 16384 ^
+  -c 32768 ^
   -np 8 ^
+  -fa on ^
   --cont-batching ^
-  --cache-type-k q8_0 ^
-  --cache-type-v q8_0 ^
+  --cache-type-k q4_0 ^
+  --cache-type-v q4_0 ^
   --threads 8
 
 pause

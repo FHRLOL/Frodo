@@ -1,4 +1,5 @@
 import Logo from './Logo.jsx'
+import UserIndicator from './UserIndicator.jsx'
 
 export default function Topbar({ title, children }) {
   return (
@@ -7,7 +8,10 @@ export default function Topbar({ title, children }) {
       <span className="topbar-brand">
         <Logo small />
       </span>
-      <div className="topbar-right">{children}</div>
+      <div className="topbar-right">
+        {children}
+        <UserIndicator compact />
+      </div>
     </header>
   )
 }

@@ -2,13 +2,19 @@ import { NavLink, Outlet, useLocation } from 'react-router-dom'
 import Sidebar from './Sidebar.jsx'
 
 export default function Layout() {
-  const { pathname } = useLocation()
-  const teacher = pathname.startsWith('/teacher')
+  const location = useLocation()
+  const teacher = location.pathname.startsWith('/teacher')
 
   return (
     <div className="app">
       <Sidebar teacher={teacher} />
       <div className="main">
+        {location.state?.accessDenied && (
+          <div className="access-denied-banner" role="alert">
+            <span className="access-denied-icon" aria-hidden="true">🔒</span>
+            <span>Доступ ограничен: раздел доступен только преподавателям курса.</span>
+          </div>
+        )}
         {teacher && (
           <nav className="mobile-tabs" aria-label="Разделы кабинета">
             <NavLink to="/teacher" end>

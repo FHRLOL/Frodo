@@ -308,6 +308,49 @@ def test_streaming_sse_endpoint():
     print(f"  [OK] Low relevance query returned '{NOT_FOUND_MESSAGE}' and logged")
 
 
+def test_thinking_mode_limiter():
+    print("\n--- 6. Testing Thinking Mode (256-token limit & Forced Transition) ---")
+    import asyncio
+    from mentor_pipeline import MentorPipeline
+    from prompt_generator import SOCRATIC_SYSTEM_PROMPT, MASTER_SYSTEM_PROMPT
+
+    # 6.1 Проверка требований в системных промптах
+    assert "НЕ БОЛЕЕ 256 токенов" in SOCRATIC_SYSTEM_PROMPT
+    assert "</thought>" in SOCRATIC_SYSTEM_PROMPT
+    assert "НЕ БОЛЕЕ 256 токенов" in MASTER_SYSTEM_PROMPT
+    assert "</thought>" in MASTER_SYSTEM_PROMPT
+    print("  [OK] Thinking Mode 256 tokens constraint verified in SOCRATIC and MASTER system prompts")
+
+    # 6.2 Тест отсечения мысли при достижении лимита токенов
+    async def _run_stream_test():
+        async def long_thought_stream():
+            yield "<thought>"
+            for i in range(300):
+                yield f"thought_{i} "
+            yield "</thought>"
+            yield "Здравствуйте! Вот объяснение материала для студента."
+
+        collected = []
+        async for chunk in MentorPipeline._limit_thinking_tokens(long_thought_stream(), max_thought_tokens=256):
+            collected.append(chunk)
+
+        result_text = "".join(collected)
+        assert "<thought>" in result_text
+        assert "</thought>" in result_text
+        # Должен быть ровно один закрывающий тег </thought>
+        assert result_text.count("</thought>") == 1
+        # Первые токены мысли присутствуют
+        assert "thought_0 " in result_text
+        assert "thought_255 " in result_text
+        # Избыточные токены мысли (>256) отсечены
+        assert "thought_280 " not in result_text
+        # Ответ студенту успешно передан
+        assert "Здравствуйте! Вот объяснение материала для студента." in result_text
+
+    asyncio.run(_run_stream_test())
+    print("  [OK] Forced thought termination at 256 tokens and transition to student answer verified")
+
+
 def run_all_tests():
     print("======================================================================")
     print("     STARTING COMPREHENSIVE FRODO RAG & INFERENCE PIPELINE TESTS      ")
@@ -317,6 +360,7 @@ def run_all_tests():
     test_dual_level_prompt_generator()
     test_pdf_manual_parser()
     test_streaming_sse_endpoint()
+    test_thinking_mode_limiter()
     print("\n======================================================================")
     print("      ALL RAG PIPELINE TESTS PASSED (100% GREEN, ZERO DEFECTS)        ")
     print("======================================================================")

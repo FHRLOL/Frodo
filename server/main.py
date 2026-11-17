@@ -2,7 +2,7 @@ import os
 import sys
 import json
 from fastapi import FastAPI, HTTPException, Depends
-from fastapi.responses import HTMLResponse, StreamingResponse, RedirectResponse
+from fastapi.responses import HTMLResponse, StreamingResponse, RedirectResponse, FileResponse, Response as PlainResponse
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 from typing import Optional, List, Dict, Any
@@ -17,17 +17,40 @@ if SRC_DIR not in sys.path:
 from fastapi.staticfiles import StaticFiles
 
 from mentor_pipeline import MentorPipeline
+import asyncio
 from database import db
 from lti.router import router as lti_router
 from api_routes import router as api_router, get_optional_current_user
 from lti.service import decode_access_token
+
+async def periodic_slot_cleaner():
+    """Фоновая периодическая очистка неактивных слотов KV-кэша каждые 30 секунд."""
+    while True:
+        try:
+            await asyncio.sleep(30)
+            if "pipeline" in globals():
+                pipeline.cleanup_idle_slots()
+        except asyncio.CancelledError:
+            break
+        except Exception:
+            pass
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     # Инициализация и первичное наполнение базы данных
     db.init_db()
     db.seed_db()
-    yield
+
+    # Запуск фонового уборщика кэша для неактивных пользователей
+    cleaner_task = asyncio.create_task(periodic_slot_cleaner())
+    try:
+        yield
+    finally:
+        cleaner_task.cancel()
+        try:
+            await cleaner_task
+        except asyncio.CancelledError:
+            pass
 
 app = FastAPI(
     title="Frodo Mentor API & Visual Inspector",
@@ -48,10 +71,36 @@ app.add_middleware(
 app.include_router(lti_router)
 app.include_router(api_router)
 
-# Подключение фронтенда студента по маршруту /chat
-CLIENT_DIR = os.path.join(os.path.dirname(BASE_DIR), "client")
-if os.path.exists(CLIENT_DIR):
-    app.mount("/chat", StaticFiles(directory=CLIENT_DIR, html=True), name="client")
+# Подключение нового React-фронтенда (Frodo UI)
+FRONTEND_DIST = os.path.join(os.path.dirname(BASE_DIR), "frontend", "dist")
+ASSETS_DIR = os.path.join(FRONTEND_DIST, "assets")
+
+if os.path.exists(ASSETS_DIR):
+    app.mount("/assets", StaticFiles(directory=ASSETS_DIR), name="assets")
+
+@app.get("/favicon.svg", include_in_schema=False)
+def favicon():
+    fav = os.path.join(FRONTEND_DIST, "favicon.svg")
+    return FileResponse(fav) if os.path.exists(fav) else PlainResponse("")
+
+@app.get("/icons.svg", include_in_schema=False)
+def icons():
+    ico = os.path.join(FRONTEND_DIST, "icons.svg")
+    return FileResponse(ico) if os.path.exists(ico) else PlainResponse("")
+
+def render_spa_index():
+    index_file = os.path.join(FRONTEND_DIST, "index.html")
+    if os.path.exists(index_file):
+        return FileResponse(index_file)
+    return HTMLResponse("<h1>Интерфейс Frodo не собран. Запустите 'npm run build' в папке frontend/.</h1>")
+
+@app.get("/", include_in_schema=False)
+@app.get("/chat", include_in_schema=False)
+@app.get("/teacher", include_in_schema=False)
+@app.get("/teacher/{path:path}", include_in_schema=False)
+def serve_spa():
+    """Отдает актуальный React SPA интерфейс Frodo AI Mentor для всех пользовательских маршрутов."""
+    return render_spa_index()
 
 pipeline = MentorPipeline(
     db_path=os.path.join(BASE_DIR, "data", "frodo_knowledge.db"),
@@ -64,11 +113,6 @@ class QueryRequest(BaseModel):
     question: str
     lab_id: Optional[int] = None
     token: Optional[str] = None
-
-@app.get("/")
-def index_page():
-    """Перенаправляет на актуальный интерфейс Frodo AI Mentor."""
-    return RedirectResponse(url="/chat", status_code=303)
 
 @app.get("/api/health")
 def health():
@@ -186,6 +230,12 @@ def reindex():
     docs_dir = os.path.join(BASE_DIR, "data", "docs")
     count = pipeline.index_course_materials(docs_dir)
     return {"status": "success", "indexed_chunks": count}
+
+@app.post("/api/admin/clean-cache")
+def clean_cache():
+    """Принудительная очистка неактивных слотов KV-кэша LLM."""
+    released = pipeline.cleanup_idle_slots()
+    return {"status": "success", "released_slots": released}
 
 if __name__ == "__main__":
     import uvicorn
