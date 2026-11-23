@@ -7,6 +7,7 @@ import { FORMAT_LABELS, useFormat } from '../context.js'
 import { useAuth } from '../context/AuthContext.jsx'
 import { chatApi, labsApi } from '../api/index.js'
 import { courseCard, suggestions, answers } from '../data/mock.js'
+import { truncateAtWord } from '../utils/text.js'
 
 function parseAnswerText(rawText) {
   if (!rawText) return { paragraphs: [], code: null, codeCaption: null }
@@ -89,12 +90,17 @@ function EmptyState({ onAsk, labs = [], selectedLabId, onSelectLab }) {
 }
 
 function Answer({ data, mode, sourceOpen, onOpenSource, onCloseSource }) {
+  const title = data.title || ''
+  const firstParagraph = data.paragraphs?.[0] || ''
+  // Если заголовок — это лишь начало первого абзаца, не дублируем вводную фразу
+  const showTitle = title && !firstParagraph.startsWith(title.replace(/…$/u, ''))
+
   return (
     <div className="answer">
       <p className="answer-by">
         Frodo {mode === 'master' ? '· Режим Мастера' : '· Сократовский диалог'}
       </p>
-      <h3 className="answer-title">{data.title}</h3>
+      {showTitle && <h3 className="answer-title">{title}</h3>}
 
       {data.paragraphs.map((text, idx) => (
         <p key={idx}>
@@ -248,7 +254,7 @@ export default function ChatPage() {
                     rawAnswer: accumulatedText,
                     mode: detectedMode,
                     answerData: {
-                      title: isRejection ? 'В материалах курса ответа нет' : (parsed.paragraphs[0]?.slice(0, 40) || 'Ответ наставника'),
+                      title: isRejection ? 'В материалах курса ответа нет' : (truncateAtWord(parsed.paragraphs[0], 40) || 'Ответ наставника'),
                       paragraphs: parsed.paragraphs,
                       code: parsed.code,
                       codeCaption: parsed.codeCaption,
@@ -366,7 +372,7 @@ export default function ChatPage() {
                 action: 'Спросить по другому разделу',
               }
             : {
-                title: parsed.paragraphs[0]?.slice(0, 48) || 'Ответ наставника',
+                title: truncateAtWord(parsed.paragraphs[0], 48) || 'Ответ наставника',
                 paragraphs: parsed.paragraphs,
                 code: parsed.code,
                 codeCaption: parsed.codeCaption,

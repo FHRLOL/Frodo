@@ -76,7 +76,7 @@ export default function TeacherAccess() {
     <>
       <Topbar title="Кабинет преподавателя">
         <span className="demo-note">
-          {isLive ? '🟢 Синхронизировано с SQLite' : 'Демонстрационные данные'}
+          {isLive ? 'Синхронизировано с сервером' : 'Демонстрационные данные'}
         </span>
       </Topbar>
 

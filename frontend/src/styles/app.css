@@ -401,6 +401,24 @@
   font-weight: 500;
 }
 
+.md-strong {
+  font-weight: 600;
+  color: var(--ink);
+}
+
+.md-em {
+  font-style: italic;
+}
+
+.md-code {
+  padding: 1px 5px;
+  border-radius: 4px;
+  background: var(--accent-100);
+  font-family: var(--font-mono);
+  font-size: 0.86em;
+  color: var(--ink);
+}
+
 .code-block {
   display: flex;
   flex-direction: column;

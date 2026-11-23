@@ -57,7 +57,7 @@ export default function TeacherActivity() {
     <>
       <Topbar title="Кабинет преподавателя">
         <span className="demo-note">
-          {isLive ? '🟢 Реальные данные Gap Analysis' : 'Демонстрационные данные'}
+          {isLive ? 'Реальные данные' : 'Демонстрационные данные'}
         </span>
       </Topbar>
 

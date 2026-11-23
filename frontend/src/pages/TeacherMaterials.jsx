@@ -52,7 +52,7 @@ export default function TeacherMaterials() {
     <>
       <Topbar title="Кабинет преподавателя">
         <span className="demo-note">
-          {isLive ? '🟢 Синхронизировано с FastAPI' : 'Демонстрационные данные'}
+          {isLive ? 'Синхронизировано с сервером' : 'Демонстрационные данные'}
         </span>
       </Topbar>
 
